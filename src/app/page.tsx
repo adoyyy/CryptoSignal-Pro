@@ -1,101 +1,135 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useRef, useState } from 'react';
+import TradingChart, { TradingChartHandle } from '@/components/TradingChart';
+import RiskPanel from '@/components/RiskPanel';
+import { useTradingStore } from '@/store/useTradingStore';
+import { analyzeMarketData, SignalResult, TAIndicatorResult } from '@/lib/ta-engine';
+import { calculateRisk, RiskResult } from '@/lib/risk-calculator';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+export default function Dashboard() {
+  const chartRef = useRef<TradingChartHandle>(null);
+  
+  const { symbol, timeframe, setSymbol, setTimeframe, currentPrice } = useTradingStore();
+  
+  const [signalResult, setSignalResult] = useState<SignalResult | null>(null);
+  const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleAnalyze = (capital: number, riskPercentage: number) => {
+    if (!chartRef.current) return;
+    setIsAnalyzing(true);
+    
+    try {
+      const historicalData = chartRef.current.getHistoricalData();
+      
+      if (historicalData.length < 200) {
+        alert("Not enough historical data to analyze (Need at least 200 candles for EMA200).");
+        return;
+      }
+
+      // 1. Calculate Signal
+      const { results, latestSignal } = analyzeMarketData(historicalData);
+      setSignalResult(latestSignal);
+
+      const latestIndicators = results[results.length - 1];
+
+      // 2. Calculate Risk
+      if (latestSignal.signal !== 'NEUTRAL' && currentPrice && latestIndicators.atr14) {
+        const risk = calculateRisk({
+          entryPrice: currentPrice,
+          atr: latestIndicators.atr14,
+          signal: latestSignal.signal,
+          capital,
+          riskPercentage,
+        });
+        
+        setRiskResult(risk);
+
+        // 3. Apply to Chart
+        chartRef.current.applyAnalysis(latestSignal, risk);
+      } else {
+        alert(`Analysis finished. Current signal is ${latestSignal.signal}.`);
+        setRiskResult(null);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error performing analysis.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen bg-slate-950 text-slate-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        <header className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-teal-400">CryptoSignal Pro</h1>
+        </header>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          
+          <div className="lg:col-span-3 space-y-4">
+            
+            {/* Toolbar */}
+            <div className="flex flex-wrap gap-4 items-center bg-slate-900 p-4 rounded-lg border border-slate-800">
+              <div className="w-32">
+                <Select value={symbol} onValueChange={setSymbol}>
+                  <SelectTrigger className="bg-slate-800 border-slate-700">
+                    <SelectValue placeholder="Symbol" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                    <SelectItem value="BTCUSDT">BTC/USDT</SelectItem>
+                    <SelectItem value="ETHUSDT">ETH/USDT</SelectItem>
+                    <SelectItem value="SOLUSDT">SOL/USDT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="w-32">
+                <Select value={timeframe} onValueChange={setTimeframe}>
+                  <SelectTrigger className="bg-slate-800 border-slate-700">
+                    <SelectValue placeholder="Timeframe" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                    <SelectItem value="15m">15m</SelectItem>
+                    <SelectItem value="1h">1h</SelectItem>
+                    <SelectItem value="4h">4h</SelectItem>
+                    <SelectItem value="1d">1d</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="ml-auto flex gap-2">
+                <Button 
+                  onClick={() => handleAnalyze(10000, 1)} 
+                  disabled={isAnalyzing}
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                >
+                  {isAnalyzing ? "Analyzing..." : "Analyze"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Trading Chart */}
+            <TradingChart ref={chartRef} />
+            
+          </div>
+          
+          {/* Risk Panel */}
+          <div className="lg:col-span-1">
+            <RiskPanel 
+              onAnalyze={handleAnalyze} 
+              signalResult={signalResult} 
+              riskResult={riskResult} 
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
