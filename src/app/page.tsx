@@ -9,8 +9,12 @@ import { calculateRisk, RiskResult } from '@/lib/risk-calculator';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+import { signOut, useSession } from 'next-auth/react';
+import Link from 'next/link';
+
 export default function Dashboard() {
   const chartRef = useRef<TradingChartHandle>(null);
+  const { data: session } = useSession();
   
   const { symbol, timeframe, setSymbol, setTimeframe, currentPrice } = useTradingStore();
   
@@ -66,8 +70,25 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-950 text-slate-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         
-        <header className="flex justify-between items-center">
+        <header className="flex justify-between items-center bg-slate-900 p-4 rounded-lg border border-slate-800">
           <h1 className="text-2xl font-bold text-teal-400">CryptoSignal Pro</h1>
+          <div className="flex items-center gap-4">
+            {session ? (
+              <>
+                <span className="text-slate-300 text-sm">{session.user?.email}</span>
+                <Button variant="outline" onClick={() => signOut()} className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700">Logout</Button>
+              </>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" className="text-slate-300 hover:text-white">Login</Button>
+                </Link>
+                <Link href="/register">
+                  <Button className="bg-teal-600 hover:bg-teal-700 text-white">Register</Button>
+                </Link>
+              </>
+            )}
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
