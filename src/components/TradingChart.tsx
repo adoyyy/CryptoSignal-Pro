@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi, CandlestickData, Time, SeriesMarker, UTCTimestamp, LineData } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, Time, SeriesMarker, UTCTimestamp, IPriceLine, createSeriesMarkers, CandlestickSeries } from 'lightweight-charts';
 import { useTradingStore } from '@/store/useTradingStore';
 import { BinanceWS } from '@/lib/binance-ws';
 import { BinanceKline } from '@/app/api/market-data/route';
@@ -13,68 +13,16 @@ export interface TradingChartHandle {
   getHistoricalData: () => BinanceKline[];
 }
 
-const TradingChart = forwardRef<TradingChartHandle, {}>((props, ref) => {
+const TradingChart = forwardRef<TradingChartHandle, unknown>((props, ref) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const slLineRef = useRef<ISeriesApi<"Line"> | null>(null);
-  const tpLineRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const priceLinesRef = useRef<IPriceLine[]>([]);
 
   const { symbol, timeframe, setCurrentPrice } = useTradingStore();
   
   const [loading, setLoading] = useState(true);
   const [historicalData, setHistoricalData] = useState<BinanceKline[]>([]);
-
-  useImperativeHandle(ref, () => ({
-    applyAnalysis: (signal, risk) => {
-      if (!seriesRef.current || !chartRef.current) return;
-      
-      const latestData = historicalData[historicalData.length - 1];
-      if (!latestData) return;
-
-      const time = latestData.time as UTCTimestamp;
-      
-      const marker: SeriesMarker<Time> = {
-        time,
-        position: signal.signal === 'BUY' ? 'belowBar' : 'aboveBar',
-        color: signal.signal === 'BUY' ? '#26a69a' : '#ef5350',
-        shape: signal.signal === 'BUY' ? 'arrowUp' : 'arrowDown',
-        text: signal.signal,
-      };
-
-      seriesRef.current.setMarkers([marker]);
-
-      // Remove existing lines if any
-      if (slLineRef.current) chartRef.current.removeSeries(slLineRef.current);
-      if (tpLineRef.current) chartRef.current.removeSeries(tpLineRef.current);
-
-      // Add horizontal lines for SL and TP
-      const slSeries = chartRef.current.addLineSeries({
-        color: '#ef5350',
-        lineWidth: 2,
-        lineStyle: 2, // Dashed
-        title: 'SL',
-      });
-
-      const tpSeries = chartRef.current.addLineSeries({
-        color: '#26a69a',
-        lineWidth: 2,
-        lineStyle: 2,
-        title: 'TP',
-      });
-
-      // To make them horizontal lines across the chart, we just add two points mapping to the visible range
-      // Or we can use `createPriceLine` on the main series instead. `createPriceLine` is better for horizontal lines.
-      
-      // Let's use `createPriceLine` instead of new series.
-      // Wait, we need to clear previous price lines.
-      // We can store references to price lines.
-    },
-    getHistoricalData: () => historicalData
-  }));
-
-  // Better implementation for applying markers and price lines
-  const priceLinesRef = useRef<any[]>([]);
 
   useImperativeHandle(ref, () => ({
     applyAnalysis: (signal, risk) => {
@@ -93,7 +41,12 @@ const TradingChart = forwardRef<TradingChartHandle, {}>((props, ref) => {
         text: signal.signal,
       };
 
-      seriesRef.current.setMarkers([marker]);
+      if (!seriesRef.current) return;
+      // In lightweight-charts v5, setMarkers is handled via plugins or differently. 
+      // It might be on ISeriesApi still, but typed differently, or we use createSeriesMarkers.
+      // Let's use any cast as a workaround for now but with proper TS ignore to avoid ESLint error, or use createSeriesMarkers if it exists.
+      // Wait, let's just use createSeriesMarkers
+      createSeriesMarkers(seriesRef.current, [marker]);
 
       // Clear previous price lines
       priceLinesRef.current.forEach(line => seriesRef.current?.removePriceLine(line));
@@ -147,7 +100,7 @@ const TradingChart = forwardRef<TradingChartHandle, {}>((props, ref) => {
 
     chartRef.current = chart;
 
-    const candlestickSeries = chart.addCandlestickSeries({
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#26a69a',
       downColor: '#ef5350',
       borderVisible: false,
@@ -171,14 +124,14 @@ const TradingChart = forwardRef<TradingChartHandle, {}>((props, ref) => {
         if (!isMounted) return;
 
         setHistoricalData(data);
-        candlestickSeries.setData(data as CandlestickData<Time>[]);
+        candlestickSeries.setData(data as unknown as CandlestickData<Time>[]);
         setCurrentPrice(data[data.length - 1]?.close || null);
 
         // Initialize WebSocket
         ws = new BinanceWS(symbol, timeframe);
         ws.connect(
           (kline) => {
-            candlestickSeries.update(kline as CandlestickData<Time>);
+            candlestickSeries.update(kline as unknown as CandlestickData<Time>);
             setHistoricalData(prev => {
               const updated = [...prev];
               const lastIdx = updated.length - 1;

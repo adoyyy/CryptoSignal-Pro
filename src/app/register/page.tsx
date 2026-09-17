@@ -33,8 +33,8 @@ export default function RegisterPage() {
       }
 
       router.push("/login");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }

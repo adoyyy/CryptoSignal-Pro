@@ -70,7 +70,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-sm text-slate-400">
-            Don't have an account? <Link href="/register" className="text-teal-400 hover:underline">Register here</Link>
+            Don&apos;t have an account? <Link href="/register" className="text-teal-400 hover:underline">Register here</Link>
           </p>
         </CardFooter>
       </Card>

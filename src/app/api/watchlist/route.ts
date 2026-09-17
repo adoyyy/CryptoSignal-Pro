@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !(session.user as any).id) {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const watchlists = await prisma.watchlist.findMany({
-      where: { userId: (session.user as any).id },
+      where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
     });
 
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !(session.user as any).id) {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const existing = await prisma.watchlist.findFirst({
       where: {
-        userId: (session.user as any).id,
+        userId: session.user.id,
         symbol: symbol,
       },
     });
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const watchlist = await prisma.watchlist.create({
       data: {
-        userId: (session.user as any).id,
+        userId: session.user.id,
         symbol,
       },
     });
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !(session.user as any).id) {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -80,7 +80,7 @@ export async function DELETE(req: NextRequest) {
     await prisma.watchlist.deleteMany({
       where: {
         id,
-        userId: (session.user as any).id,
+        userId: session.user.id,
       },
     });
 

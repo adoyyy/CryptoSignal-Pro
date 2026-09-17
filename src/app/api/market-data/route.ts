@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data: any[][] = await response.json();
+    const data: (string | number)[][] = await response.json();
 
     // Map Binance response to Lightweight Charts format
     // Binance response format:
@@ -57,16 +57,16 @@ export async function GET(request: NextRequest) {
       // but for intraday it can take milliseconds or Unix timestamps.
       // A common approach is using Math.floor(time / 1000) for timestamps.
       // But according to lightweight-charts docs, for timestamps it expects time in seconds (Unix timestamp) or business day strings.
-      time: Math.floor(kline[0] / 1000) as import('lightweight-charts').UTCTimestamp,
-      open: parseFloat(kline[1]),
-      high: parseFloat(kline[2]),
-      low: parseFloat(kline[3]),
-      close: parseFloat(kline[4]),
-      volume: parseFloat(kline[5]),
+      time: Math.floor(kline[0] as number / 1000) as import('lightweight-charts').UTCTimestamp,
+      open: parseFloat(kline[1] as string),
+      high: parseFloat(kline[2] as string),
+      low: parseFloat(kline[3] as string),
+      close: parseFloat(kline[4] as string),
+      volume: parseFloat(kline[5] as string),
     }));
 
     return NextResponse.json(formattedData);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching market data:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

@@ -7,20 +7,17 @@ import { RiskResult } from '@/lib/risk-calculator';
 import { SignalResult } from '@/lib/ta-engine';
 import { useTradingStore } from '@/store/useTradingStore';
 
+import { Button } from '@/components/ui/button';
+
 interface RiskPanelProps {
-  onAnalyze: (capital: number, riskPercentage: number) => void;
   signalResult: SignalResult | null;
   riskResult: RiskResult | null;
 }
 
-const RiskPanel: React.FC<RiskPanelProps> = ({ onAnalyze, signalResult, riskResult }) => {
+const RiskPanel: React.FC<RiskPanelProps> = ({ signalResult, riskResult }) => {
   const [capital, setCapital] = useState<number>(10000);
   const [riskPercentage, setRiskPercentage] = useState<number>(1);
   const { currentPrice, symbol } = useTradingStore();
-
-  const handleAnalyze = () => {
-    onAnalyze(capital, riskPercentage);
-  };
 
   return (
     <Card className="w-full bg-slate-900 border-slate-800 text-slate-100">
@@ -104,7 +101,8 @@ const RiskPanel: React.FC<RiskPanelProps> = ({ onAnalyze, signalResult, riskResu
                     });
                     if (res.ok) alert('Saved to journal!');
                     else alert('Failed to save. Are you logged in?');
-                  } catch (err) {
+                  } catch (error) {
+                    console.error(error);
                     alert('Error saving to journal');
                   }
                 }}

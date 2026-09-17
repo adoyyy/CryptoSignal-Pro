@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import TradingChart, { TradingChartHandle } from '@/components/TradingChart';
 import RiskPanel from '@/components/RiskPanel';
 import { useTradingStore } from '@/store/useTradingStore';
-import { analyzeMarketData, SignalResult, TAIndicatorResult } from '@/lib/ta-engine';
+import { analyzeMarketData, SignalResult } from '@/lib/ta-engine';
 import { calculateRisk, RiskResult } from '@/lib/risk-calculator';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -98,7 +98,7 @@ export default function Dashboard() {
             {/* Toolbar */}
             <div className="flex flex-wrap gap-4 items-center bg-slate-900 p-4 rounded-lg border border-slate-800">
               <div className="w-32">
-                <Select value={symbol} onValueChange={setSymbol}>
+                <Select value={symbol} onValueChange={(val) => setSymbol(val as string)}>
                   <SelectTrigger className="bg-slate-800 border-slate-700">
                     <SelectValue placeholder="Symbol" />
                   </SelectTrigger>
@@ -111,7 +111,7 @@ export default function Dashboard() {
               </div>
               
               <div className="w-32">
-                <Select value={timeframe} onValueChange={setTimeframe}>
+                <Select value={timeframe} onValueChange={(val) => setTimeframe(val as string)}>
                   <SelectTrigger className="bg-slate-800 border-slate-700">
                     <SelectValue placeholder="Timeframe" />
                   </SelectTrigger>
@@ -135,7 +135,8 @@ export default function Dashboard() {
                       });
                       if (res.ok) alert('Added to watchlist!');
                       else alert('Failed to add. Are you logged in?');
-                    } catch (err) {
+                    } catch (error) {
+                      console.error(error);
                       alert('Error adding to watchlist');
                     }
                   }}
@@ -162,7 +163,6 @@ export default function Dashboard() {
           {/* Right Column: Risk Panel & Watchlist */}
           <div className="lg:col-span-1 space-y-6">
             <RiskPanel 
-              onAnalyze={handleAnalyze} 
               signalResult={signalResult} 
               riskResult={riskResult} 
             />
@@ -183,7 +183,7 @@ export default function Dashboard() {
 }
 
 function WatchlistComponent({ onSelect }: { onSelect: (symbol: string) => void }) {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<{ id: string; symbol: string }[]>([]);
 
   React.useEffect(() => {
     fetch('/api/watchlist')
