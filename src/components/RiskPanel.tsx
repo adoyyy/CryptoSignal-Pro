@@ -86,6 +86,34 @@ const RiskPanel: React.FC<RiskPanelProps> = ({ onAnalyze, signalResult, riskResu
               <span className="text-sm text-slate-400">Position (USD):</span>
               <span className="font-medium">${riskResult.positionSizeUSD.toFixed(2)}</span>
             </div>
+            
+            {signalResult && signalResult.signal !== 'NEUTRAL' && (
+              <Button 
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/history', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        symbol,
+                        signal: signalResult.signal,
+                        entryPrice: currentPrice,
+                        stopLoss: riskResult.stopLoss,
+                        takeProfit: riskResult.takeProfit,
+                      }),
+                    });
+                    if (res.ok) alert('Saved to journal!');
+                    else alert('Failed to save. Are you logged in?');
+                  } catch (err) {
+                    alert('Error saving to journal');
+                  }
+                }}
+                className="w-full mt-4 bg-slate-800 hover:bg-slate-700 text-white"
+                variant="outline"
+              >
+                💾 Save to Journal
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

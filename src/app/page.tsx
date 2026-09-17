@@ -126,6 +126,25 @@ export default function Dashboard() {
 
               <div className="ml-auto flex gap-2">
                 <Button 
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/watchlist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbol })
+                      });
+                      if (res.ok) alert('Added to watchlist!');
+                      else alert('Failed to add. Are you logged in?');
+                    } catch (err) {
+                      alert('Error adding to watchlist');
+                    }
+                  }}
+                  variant="outline"
+                  className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
+                >
+                  ⭐ Watchlist
+                </Button>
+                <Button 
                   onClick={() => handleAnalyze(10000, 1)} 
                   disabled={isAnalyzing}
                   className="bg-teal-600 hover:bg-teal-700 text-white"
@@ -140,17 +159,54 @@ export default function Dashboard() {
             
           </div>
           
-          {/* Risk Panel */}
-          <div className="lg:col-span-1">
+          {/* Right Column: Risk Panel & Watchlist */}
+          <div className="lg:col-span-1 space-y-6">
             <RiskPanel 
               onAnalyze={handleAnalyze} 
               signalResult={signalResult} 
               riskResult={riskResult} 
             />
+
+            {/* Watchlist Quick View */}
+            {session && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-slate-100 mb-4">My Watchlist</h3>
+                <WatchlistComponent onSelect={setSymbol} />
+              </div>
+            )}
           </div>
 
         </div>
       </div>
     </div>
+  );
+}
+
+function WatchlistComponent({ onSelect }: { onSelect: (symbol: string) => void }) {
+  const [items, setItems] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetch('/api/watchlist')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setItems(data);
+      })
+      .catch(console.error);
+  }, []);
+
+  return (
+    <ul className="space-y-2">
+      {items.length === 0 && <li className="text-sm text-slate-500">No symbols saved</li>}
+      {items.map(item => (
+        <li key={item.id}>
+          <button 
+            onClick={() => onSelect(item.symbol)}
+            className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded-md transition-colors"
+          >
+            {item.symbol}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
