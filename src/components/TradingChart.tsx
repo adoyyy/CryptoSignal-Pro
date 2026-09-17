@@ -168,7 +168,7 @@ const TradingChart = forwardRef<TradingChartHandle, unknown>((props, ref) => {
   }, [symbol, timeframe, setCurrentPrice]);
 
   return (
-    <div className="w-full h-[500px] relative rounded-md overflow-hidden border border-slate-800 bg-[#131722]">
+    <div className="w-full h-[400px] lg:h-[600px] bg-slate-900 border border-slate-800 rounded-lg relative overflow-hidden">
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#131722]/80">
           <span className="text-white text-sm font-medium">Loading Market Data...</span>
